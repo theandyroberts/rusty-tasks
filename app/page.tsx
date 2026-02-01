@@ -57,6 +57,17 @@ export default function Home() {
     }
   }, []);
 
+  // Auto-refresh every 5 seconds when authenticated
+  useEffect(() => {
+    if (!authenticated) return;
+    
+    const interval = setInterval(() => {
+      fetchData(undefined, true); // silent refresh
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [authenticated, scheduleDate]);
+
   const handleLogin = () => {
     if (password === 'rocko1') {
       sessionStorage.setItem('henry_auth', 'true');
@@ -67,8 +78,8 @@ export default function Home() {
     }
   };
 
-  const fetchData = async (date?: Date) => {
-    setLoading(true);
+  const fetchData = async (date?: Date, silent?: boolean) => {
+    if (!silent) setLoading(true);
     try {
       const dateStr = (date || scheduleDate).toISOString().split('T')[0];
       const [tasksRes, recurringRes] = await Promise.all([
@@ -83,7 +94,7 @@ export default function Home() {
     } catch (error) {
       console.error('Failed to fetch data:', error);
     }
-    setLoading(false);
+    if (!silent) setLoading(false);
   };
 
   const changeScheduleDate = (days: number) => {
