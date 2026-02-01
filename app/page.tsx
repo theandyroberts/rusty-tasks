@@ -46,6 +46,7 @@ export default function Home() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [sendBackComment, setSendBackComment] = useState('');
   const [devNotes, setDevNotes] = useState('');
+  const [expandedArchiveIds, setExpandedArchiveIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const auth = sessionStorage.getItem('henry_auth');
@@ -232,7 +233,7 @@ export default function Home() {
             <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center text-2xl">
               🎩
             </div>
-            <h1 className="text-2xl font-bold">Henry, Rusty</h1>
+            <h1 className="text-2xl font-bold">Rusty</h1>
           </div>
           <input
             type="password"
@@ -263,7 +264,7 @@ export default function Home() {
           </div>
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
-              Henry, Rusty
+              Rusty
               <span className="w-2 h-2 bg-green-500 rounded-full"></span>
             </h1>
             <p className="text-slate-400 text-sm">
@@ -383,42 +384,77 @@ export default function Home() {
                 <div className="space-y-3">
                   {tasks
                     .filter((task) => task.status === column.id)
-                    .map((task) => (
-                      <div
-                        key={task.id}
-                        className={`task-card p-3 ${
-                          task.status === 'done' ? 'cursor-pointer hover:ring-2 hover:ring-green-500' : 
-                          task.status === 'needs_feedback' ? 'cursor-pointer hover:ring-2 hover:ring-purple-500' : 
-                          'cursor-move'
-                        }`}
-                        draggable={task.status !== 'done' && task.status !== 'needs_feedback'}
-                        onDragStart={() => task.status !== 'done' && task.status !== 'needs_feedback' && handleDragStart(task)}
-                        onClick={() => (task.status === 'done' || task.status === 'needs_feedback') && setSelectedTask(task)}
-                      >
-                        <div className="flex items-start gap-2">
-                          <span className={`status-dot status-${task.status} mt-1.5`}></span>
-                          <div className="flex-1">
-                            <p className="font-medium">{task.title}</p>
-                            {task.description && (
-                              <p className="text-slate-400 text-sm mt-1">
-                                {task.description}
-                              </p>
-                            )}
-                            {task.source && task.source !== 'manual' && (
-                              <span className="text-xs text-slate-500 mt-1 inline-block">
-                                via {task.source}
-                              </span>
-                            )}
-                            {task.dev_notes && (task.status === 'done' || task.status === 'archive') && (
-                              <div className="mt-2 pt-2 border-t border-slate-600">
-                                <p className="text-xs text-green-400 font-medium">🎩 Developer Notes:</p>
-                                <p className="text-slate-300 text-sm mt-1">{task.dev_notes}</p>
-                              </div>
-                            )}
+                    .map((task) => {
+                      const isArchive = task.status === 'archive';
+                      const isExpanded = expandedArchiveIds.has(task.id);
+                      
+                      // Archive tasks: compact view unless expanded
+                      if (isArchive && !isExpanded) {
+                        return (
+                          <div
+                            key={task.id}
+                            className="task-card p-2 cursor-pointer hover:bg-slate-600/50"
+                            onClick={() => setExpandedArchiveIds(prev => new Set(prev).add(task.id))}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="status-dot status-archive"></span>
+                              <p className="text-sm text-slate-400 truncate">{task.title}</p>
+                            </div>
+                          </div>
+                        );
+                      }
+                      
+                      return (
+                        <div
+                          key={task.id}
+                          className={`task-card p-3 ${
+                            task.status === 'done' ? 'cursor-pointer hover:ring-2 hover:ring-green-500' : 
+                            task.status === 'needs_feedback' ? 'cursor-pointer hover:ring-2 hover:ring-purple-500' : 
+                            isArchive ? 'cursor-pointer' :
+                            'cursor-move'
+                          }`}
+                          draggable={task.status !== 'done' && task.status !== 'needs_feedback' && !isArchive}
+                          onDragStart={() => task.status !== 'done' && task.status !== 'needs_feedback' && !isArchive && handleDragStart(task)}
+                          onClick={() => {
+                            if (task.status === 'done' || task.status === 'needs_feedback') {
+                              setSelectedTask(task);
+                            } else if (isArchive) {
+                              setExpandedArchiveIds(prev => {
+                                const newSet = new Set(prev);
+                                newSet.delete(task.id);
+                                return newSet;
+                              });
+                            }
+                          }}
+                        >
+                          <div className="flex items-start gap-2">
+                            <span className={`status-dot status-${task.status} mt-1.5`}></span>
+                            <div className="flex-1">
+                              <p className="font-medium">{task.title}</p>
+                              {task.description && (
+                                <p className="text-slate-400 text-sm mt-1">
+                                  {task.description}
+                                </p>
+                              )}
+                              {task.source && task.source !== 'manual' && (
+                                <span className="text-xs text-slate-500 mt-1 inline-block">
+                                  via {task.source}
+                                </span>
+                              )}
+                              {task.dev_notes && (task.status === 'done' || task.status === 'archive') && (
+                                <div className="mt-2 pt-2 border-t border-slate-600">
+                                  <p className="text-xs text-green-400 font-medium">🎩 Developer Notes:</p>
+                                  <p className="text-slate-300 text-sm mt-1">{task.dev_notes}</p>
+                                </div>
+                              )}
+                              {isArchive && (
+                                <p className="text-xs text-slate-500 mt-2 italic">Click to collapse</p>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                 </div>
               </div>
             ))}
