@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Henry, Rusty — Task Tracker
 
-## Getting Started
+A Kanban-style task tracker for Henry Bottholomew (Clawdbot agent).
 
-First, run the development server:
+## Features
+
+- **Kanban Board**: TO DO → IN PROGRESS → DONE → ARCHIVE
+- **Today's Schedule**: Shows recurring tasks from cron jobs with completion checkmarks
+- **API Access**: Henry can update tasks programmatically
+- **Drag & Drop**: Move tasks between columns
+- **Supabase Backend**: Persistent storage accessible from anywhere
+
+## Setup
+
+1. Create a Supabase project at https://supabase.com
+2. Run the schema in `supabase-schema.sql` in the SQL Editor
+3. Copy `.env.local.example` to `.env.local` and fill in your Supabase credentials
+4. `npm install`
+5. `npm run dev`
+
+## API Endpoints
+
+### Tasks
+
+- `GET /api/tasks` — List all tasks
+- `POST /api/tasks` — Create task
+  ```json
+  { "title": "Task name", "description": "optional", "status": "todo", "source": "telegram" }
+  ```
+- `PATCH /api/tasks/:id` — Update task
+  ```json
+  { "status": "done" }
+  ```
+- `DELETE /api/tasks/:id` — Delete task
+
+### Recurring Tasks
+
+- `GET /api/recurring` — List recurring tasks with today's completion status
+- `POST /api/recurring/:id/complete` — Toggle completion
+  ```json
+  { "completed": true }
+  ```
+
+### Sync
+
+- `POST /api/sync` — Sync cron jobs to recurring tasks
+  ```json
+  { "cron_jobs": [...] }
+  ```
+
+## Usage by Henry
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Add a task
+curl -X POST http://localhost:3001/api/tasks \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Review QuizzyDots quiz", "source": "cron"}'
+
+# Move task to done
+curl -X PATCH http://localhost:3001/api/tasks/<id> \
+  -H "Content-Type: application/json" \
+  -d '{"status": "done"}'
+
+# Mark recurring task complete
+curl -X POST http://localhost:3001/api/recurring/<id>/complete \
+  -H "Content-Type: application/json" \
+  -d '{"completed": true}'
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Deployment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Local: http://localhost:3001
+Production: https://tasks.sparkpoint.studio
