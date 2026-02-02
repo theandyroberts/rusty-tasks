@@ -255,21 +255,64 @@ export default function Home() {
     );
   }
 
+  // Check if Rusty is working on something
+  const isWorking = tasks.some(t => t.status === 'in_progress');
+
   return (
     <div className="min-h-screen p-6">
+      {/* Working indicator animation styles */}
+      <style jsx>{`
+        @keyframes working-pulse {
+          0%, 100% { 
+            box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.4),
+                        0 0 0 6px rgba(250, 204, 21, 0.2);
+          }
+          50% { 
+            box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.6),
+                        0 0 0 8px rgba(250, 204, 21, 0.3);
+          }
+        }
+        @keyframes working-spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .avatar-working {
+          position: relative;
+        }
+        .avatar-working::before {
+          content: '';
+          position: absolute;
+          inset: -4px;
+          border-radius: 50%;
+          border: 3px solid transparent;
+          border-top-color: #facc15;
+          border-right-color: #facc15;
+          animation: working-spin 1.5s linear infinite;
+        }
+        .avatar-working::after {
+          content: '';
+          position: absolute;
+          inset: -8px;
+          border-radius: 50%;
+          animation: working-pulse 2s ease-in-out infinite;
+        }
+      `}</style>
+      
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-yellow-500 rounded-full flex items-center justify-center text-3xl shadow-lg">
-            🎩
+          <div className={`relative ${isWorking ? 'avatar-working' : ''}`}>
+            <div className="w-16 h-16 bg-yellow-500 rounded-full flex items-center justify-center text-3xl shadow-lg">
+              🎩
+            </div>
           </div>
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               Rusty
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+              <span className={`w-2 h-2 rounded-full ${isWorking ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}`}></span>
             </h1>
             <p className="text-slate-400 text-sm">
-              {loading ? '⏳ Syncing...' : '✓ Ready for tasks'}
+              {loading ? '⏳ Syncing...' : isWorking ? '🔧 Working...' : '✓ Ready for tasks'}
             </p>
           </div>
         </div>
