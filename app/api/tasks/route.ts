@@ -1,12 +1,34 @@
 import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const { data, error } = await supabase
-      .from('tasks')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status');
+    const limit = searchParams.get('limit');
+    const oldest = searchParams.get('oldest') === 'true';
+
+    let query = supabase.from('tasks').select('*');
+
+    // Filter by status if provided
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    // Order: oldest first if filtering for actionable tasks, otherwise newest first
+    if (oldest || status === 'todo') {
+      query = query.order('created_at', { ascending: true });
+    } else {
+      query = query.order('created_at', { ascending: false });
+    }
+
+    // Limit results if specified
+    if (limit) {
+      query = query.limit(parseInt(limit, 10));
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
 

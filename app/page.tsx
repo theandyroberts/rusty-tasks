@@ -242,6 +242,7 @@ export default function Home() {
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
             className="w-full px-4 py-2 bg-slate-700 rounded-lg mb-4 text-white"
+            autoFocus
           />
           <button
             onClick={handleLogin}
