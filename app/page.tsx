@@ -233,9 +233,11 @@ export default function Home() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="bg-slate-800 p-8 rounded-xl shadow-xl">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center text-2xl">
-              🎩
-            </div>
+            <img 
+              src="/rusty-avatar.png" 
+              alt="Rusty" 
+              className="w-12 h-12 rounded-full object-cover"
+            />
             <h1 className="text-2xl font-bold">Rusty</h1>
           </div>
           <input
@@ -305,9 +307,11 @@ export default function Home() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <div className={`relative ${isWorking ? 'avatar-working' : ''}`}>
-            <div className="w-16 h-16 bg-yellow-500 rounded-full flex items-center justify-center text-3xl shadow-lg">
-              🎩
-            </div>
+            <img 
+              src="/rusty-avatar.png" 
+              alt="Rusty" 
+              className="w-16 h-16 rounded-full shadow-lg object-cover"
+            />
           </div>
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
