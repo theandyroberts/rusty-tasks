@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 type Task = {
   id: string;
+  ref_num?: number;
   title: string;
   description?: string;
   status: 'todo' | 'in_progress' | 'needs_feedback' | 'done' | 'archive';
@@ -456,7 +457,10 @@ export default function Home() {
                           >
                             <div className="flex items-center gap-2">
                               <span className="status-dot status-archive"></span>
-                              <p className="text-sm text-slate-400 truncate">{task.title}</p>
+                              <p className="text-sm text-slate-400 truncate">
+                                {task.ref_num && <span className="font-mono mr-1">#{task.ref_num}</span>}
+                                {task.title}
+                              </p>
                             </div>
                           </div>
                         );
@@ -488,7 +492,10 @@ export default function Home() {
                           <div className="flex items-start gap-2">
                             <span className={`status-dot status-${task.status} mt-1.5`}></span>
                             <div className="flex-1">
-                              <p className="font-medium">{task.title}</p>
+                              <p className="font-medium">
+                                {task.ref_num && <span className="text-slate-500 font-mono text-sm mr-2">#{task.ref_num}</span>}
+                                {task.title}
+                              </p>
                               {task.description && (
                                 <p className="text-slate-400 text-sm mt-1">
                                   {task.description}
@@ -629,7 +636,10 @@ export default function Home() {
       {selectedTask && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setSelectedTask(null); setDevNotes(''); setSendBackComment(''); }}>
           <div className="bg-slate-800 p-6 rounded-xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold mb-2">{selectedTask.title}</h3>
+            <h3 className="text-lg font-semibold mb-2">
+              {selectedTask.ref_num && <span className="text-slate-500 font-mono mr-2">#{selectedTask.ref_num}</span>}
+              {selectedTask.title}
+            </h3>
             {selectedTask.description && (
               <p className="text-slate-400 text-sm mb-4">{selectedTask.description}</p>
             )}
