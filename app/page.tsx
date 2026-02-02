@@ -47,6 +47,7 @@ export default function Home() {
   const [sendBackComment, setSendBackComment] = useState('');
   const [devNotes, setDevNotes] = useState('');
   const [expandedArchiveIds, setExpandedArchiveIds] = useState<Set<string>>(new Set());
+  const [connected, setConnected] = useState(true);
 
   useEffect(() => {
     const auth = sessionStorage.getItem('henry_auth');
@@ -92,8 +93,10 @@ export default function Home() {
       setTasks(tasksData.tasks || []);
       setRecurringTasks(recurringData.tasks || []);
       setLastSync(new Date());
+      setConnected(true);
     } catch (error) {
       console.error('Failed to fetch data:', error);
+      setConnected(false);
     }
     if (!silent) setLoading(false);
   };
@@ -309,10 +312,17 @@ export default function Home() {
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               Rusty
-              <span className={`w-2 h-2 rounded-full ${isWorking ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}`}></span>
+              <span 
+                className={`w-2 h-2 rounded-full ${
+                  !connected ? 'bg-red-500' : 
+                  isWorking ? 'bg-yellow-500 animate-pulse' : 
+                  'bg-green-500'
+                }`}
+                title={!connected ? 'Disconnected' : isWorking ? 'Working' : 'Connected'}
+              ></span>
             </h1>
             <p className="text-slate-400 text-sm">
-              {loading ? '⏳ Syncing...' : isWorking ? '🔧 Working...' : '✓ Ready for tasks'}
+              {!connected ? '❌ Disconnected' : loading ? '⏳ Syncing...' : isWorking ? '🔧 Working...' : '✓ Connected'}
             </p>
           </div>
         </div>
