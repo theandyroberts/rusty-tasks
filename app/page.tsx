@@ -23,6 +23,19 @@ type RecurringTask = {
   completed_today: boolean;
 };
 
+type ResearchTopic = {
+  id: string;
+  title: string;
+  category: 'ml_ai' | 'trading' | 'app_dev' | 'marketing' | 'workflow_tools' | 'other';
+  notes?: string;
+  links?: string[];
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastUsedAt?: string;
+  usedCount: number;
+};
+
 const COLUMNS = [
   { id: 'todo', title: 'TO DO', color: 'blue' },
   { id: 'in_progress', title: 'IN PROGRESS', color: 'yellow' },
@@ -32,7 +45,7 @@ const COLUMNS = [
 ];
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'today'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'today' | 'topics'>('dashboard');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [recurringTasks, setRecurringTasks] = useState<RecurringTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +62,17 @@ export default function Home() {
   const [devNotes, setDevNotes] = useState('');
   const [expandedArchiveIds, setExpandedArchiveIds] = useState<Set<string>>(new Set());
   const [connected, setConnected] = useState(true);
+
+  // Research topics
+  const [topics, setTopics] = useState<ResearchTopic[]>([]);
+  const [topicsLoading, setTopicsLoading] = useState(false);
+  const [showAddTopic, setShowAddTopic] = useState(false);
+  const [editingTopic, setEditingTopic] = useState<ResearchTopic | null>(null);
+  const [topicTitle, setTopicTitle] = useState('');
+  const [topicCategory, setTopicCategory] = useState<ResearchTopic['category']>('marketing');
+  const [topicNotes, setTopicNotes] = useState('');
+  const [topicLinksText, setTopicLinksText] = useState('');
+  const [topicActive, setTopicActive] = useState(true);
 
   useEffect(() => {
     const auth = sessionStorage.getItem('henry_auth');
@@ -100,6 +124,100 @@ export default function Home() {
       setConnected(false);
     }
     if (!silent) setLoading(false);
+  };
+
+  const fetchTopics = async () => {
+    setTopicsLoading(true);
+    try {
+      const res = await fetch('/api/research-topics', { cache: 'no-store' });
+      const data = await res.json();
+      setTopics(data.topics || []);
+    } catch (error) {
+      console.error('Failed to fetch topics:', error);
+    }
+    setTopicsLoading(false);
+  };
+
+  // Load topics when switching to the Topics tab
+  useEffect(() => {
+    if (!authenticated) return;
+    if (activeTab !== 'topics') return;
+    fetchTopics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, authenticated]);
+
+  const openAddTopic = () => {
+    setEditingTopic(null);
+    setTopicTitle('');
+    setTopicCategory('marketing');
+    setTopicNotes('');
+    setTopicLinksText('');
+    setTopicActive(true);
+    setShowAddTopic(true);
+  };
+
+  const openEditTopic = (topic: ResearchTopic) => {
+    setEditingTopic(topic);
+    setTopicTitle(topic.title);
+    setTopicCategory(topic.category);
+    setTopicNotes(topic.notes || '');
+    setTopicLinksText((topic.links || []).join('\n'));
+    setTopicActive(topic.active);
+    setShowAddTopic(true);
+  };
+
+  const saveTopic = async () => {
+    if (!topicTitle.trim()) return;
+
+    const links = topicLinksText
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    try {
+      if (editingTopic) {
+        await fetch(`/api/research-topics/${editingTopic.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: topicTitle.trim(),
+            category: topicCategory,
+            notes: topicNotes,
+            links,
+            active: topicActive,
+          }),
+        });
+      } else {
+        await fetch('/api/research-topics', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: topicTitle.trim(),
+            category: topicCategory,
+            notes: topicNotes,
+            links,
+            active: topicActive,
+          }),
+        });
+      }
+
+      setShowAddTopic(false);
+      setEditingTopic(null);
+      await fetchTopics();
+    } catch (error) {
+      console.error('Failed to save topic:', error);
+    }
+  };
+
+  const deleteTopic = async (topicId: string) => {
+    if (!confirm('Delete this topic?')) return;
+
+    try {
+      await fetch(`/api/research-topics/${topicId}`, { method: 'DELETE' });
+      await fetchTopics();
+    } catch (error) {
+      console.error('Failed to delete topic:', error);
+    }
   };
 
   const changeScheduleDate = (days: number) => {
@@ -375,6 +493,16 @@ export default function Home() {
         >
           Today&apos;s Schedule
         </button>
+        <button
+          onClick={() => setActiveTab('topics')}
+          className={`px-4 py-2 font-medium ${
+            activeTab === 'topics'
+              ? 'text-white border-b-2 border-yellow-500'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          Research Topics
+        </button>
       </div>
 
       {activeTab === 'dashboard' ? (
@@ -525,7 +653,7 @@ export default function Home() {
             ))}
           </div>
         </>
-      ) : (
+      ) : activeTab === 'today' ? (
         /* Today's Schedule Tab */
         <div className="max-w-2xl">
           <div className="flex items-center justify-between mb-4">
@@ -629,6 +757,212 @@ export default function Home() {
               </span>
             </div>
           </div>
+        </div>
+      ) : (
+        /* Research Topics Tab */
+        <div className="max-w-4xl">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-semibold">Research Topics</h2>
+              <p className="text-slate-400 text-sm mt-1">
+                Your queue for the daily 3pm research report. Add/edit/delete anything you want me to research.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => fetchTopics()}
+                className="px-3 py-2 bg-slate-700 rounded-lg hover:bg-slate-600 text-sm"
+                title="Refresh"
+              >
+                🔄
+              </button>
+              <button
+                onClick={openAddTopic}
+                className="px-4 py-2 bg-green-600 rounded-lg hover:bg-green-500 text-sm font-medium"
+              >
+                + Add Topic
+              </button>
+            </div>
+          </div>
+
+          {/* Add/Edit Topic Form */}
+          {showAddTopic && (
+            <div className="bg-slate-800 p-4 rounded-lg mb-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold">
+                  {editingTopic ? 'Edit Topic' : 'Add Topic'}
+                </h3>
+                <button
+                  onClick={() => { setShowAddTopic(false); setEditingTopic(null); }}
+                  className="text-slate-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="md:col-span-2">
+                  <label className="text-xs text-slate-400">Title</label>
+                  <input
+                    type="text"
+                    value={topicTitle}
+                    onChange={(e) => setTopicTitle(e.target.value)}
+                    placeholder="e.g., OpenClaw prompt injection defense best practices"
+                    className="w-full px-3 py-2 bg-slate-700 rounded text-white"
+                    autoFocus
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-slate-400">Category</label>
+                  <select
+                    value={topicCategory}
+                    onChange={(e) => setTopicCategory(e.target.value as ResearchTopic['category'])}
+                    className="w-full px-3 py-2 bg-slate-700 rounded text-white"
+                  >
+                    <option value="ml_ai">ML/AI</option>
+                    <option value="trading">Trading</option>
+                    <option value="app_dev">App Dev</option>
+                    <option value="marketing">Marketing</option>
+                    <option value="workflow_tools">Workflow Tools</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div className="flex items-end gap-2">
+                  <label className="flex items-center gap-2 text-sm text-slate-300 select-none">
+                    <input
+                      type="checkbox"
+                      checked={topicActive}
+                      onChange={(e) => setTopicActive(e.target.checked)}
+                    />
+                    Active (eligible for daily report)
+                  </label>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="text-xs text-slate-400">Notes (optional)</label>
+                  <textarea
+                    value={topicNotes}
+                    onChange={(e) => setTopicNotes(e.target.value)}
+                    placeholder="What should I focus on? Any constraints?"
+                    className="w-full px-3 py-2 bg-slate-700 rounded text-white resize-none"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="text-xs text-slate-400">Links (optional, one per line)</label>
+                  <textarea
+                    value={topicLinksText}
+                    onChange={(e) => setTopicLinksText(e.target.value)}
+                    placeholder="https://example.com\nhttps://another.com"
+                    className="w-full px-3 py-2 bg-slate-700 rounded text-white resize-none"
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 mt-4">
+                <button
+                  onClick={saveTopic}
+                  className="px-4 py-2 bg-yellow-500 text-black font-semibold rounded-lg hover:bg-yellow-400"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => { setShowAddTopic(false); setEditingTopic(null); }}
+                  className="px-4 py-2 bg-slate-700 rounded-lg hover:bg-slate-600"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Topics List */}
+          {topicsLoading ? (
+            <p className="text-slate-400">Loading topics…</p>
+          ) : topics.length === 0 ? (
+            <p className="text-slate-400">No topics yet. Click “Add Topic” to create your first one.</p>
+          ) : (
+            <div className="space-y-3">
+              {topics.map((topic) => {
+                const categoryLabel =
+                  topic.category === 'ml_ai' ? 'ML/AI' :
+                  topic.category === 'trading' ? 'Trading' :
+                  topic.category === 'app_dev' ? 'App Dev' :
+                  topic.category === 'marketing' ? 'Marketing' :
+                  topic.category === 'workflow_tools' ? 'Workflow Tools' :
+                  'Other';
+
+                return (
+                  <div
+                    key={topic.id}
+                    className={`bg-slate-800 p-4 rounded-lg border ${topic.active ? 'border-slate-700' : 'border-slate-700/50 opacity-70'}`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${topic.active ? 'bg-green-600/20 text-green-300' : 'bg-slate-700 text-slate-300'}`}>
+                            {categoryLabel}
+                          </span>
+                          {!topic.active && (
+                            <span className="px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-300">inactive</span>
+                          )}
+                          <p className="font-medium">{topic.title}</p>
+                        </div>
+
+                        {topic.notes && (
+                          <p className="text-slate-300 text-sm mt-2 whitespace-pre-line">{topic.notes}</p>
+                        )}
+
+                        {topic.links && topic.links.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-xs text-slate-400 mb-1">Links:</p>
+                            <ul className="list-disc pl-5 space-y-1">
+                              {topic.links.map((link, idx) => (
+                                <li key={idx} className="text-sm">
+                                  <a
+                                    href={link}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-yellow-300 hover:underline break-all"
+                                  >
+                                    {link}
+                                  </a>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        <p className="text-xs text-slate-500 mt-3">
+                          Used: {topic.usedCount || 0}x
+                          {topic.lastUsedAt ? ` • Last used: ${new Date(topic.lastUsedAt).toLocaleDateString()}` : ''}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => openEditTopic(topic)}
+                          className="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 text-sm"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => deleteTopic(topic.id)}
+                          className="px-3 py-1 bg-red-600/80 rounded hover:bg-red-600 text-sm"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
