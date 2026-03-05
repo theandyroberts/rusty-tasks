@@ -8,12 +8,18 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const limit = searchParams.get('limit');
     const oldest = searchParams.get('oldest') === 'true';
+    const assignedTo = searchParams.get('assigned_to') || searchParams.get('assignee');
 
     let query = supabase.from('tasks').select('*');
 
     // Filter by status if provided
     if (status) {
       query = query.eq('status', status);
+    }
+
+    // Filter by assignee if provided
+    if (assignedTo) {
+      query = query.eq('assigned_to', assignedTo);
     }
 
     // Order: oldest first if filtering for actionable tasks, otherwise newest first
@@ -42,7 +48,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { title, description, status = 'todo', priority, source = 'manual' } = body;
+    const { title, description, status = 'todo', priority, source = 'manual', assigned_to = 'unassigned' } = body;
 
     const { data, error } = await supabase
       .from('tasks')
@@ -53,6 +59,7 @@ export async function POST(request: Request) {
           status,
           priority,
           source,
+          assigned_to,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },

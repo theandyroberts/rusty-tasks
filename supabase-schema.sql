@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   description TEXT,
   status TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'in_progress', 'needs_feedback', 'done', 'archive')),
   priority TEXT CHECK (priority IN ('low', 'medium', 'high')),
+  assigned_to TEXT DEFAULT 'unassigned' CHECK (assigned_to IN ('rusty', 'claude_code', 'unassigned')),
   source TEXT DEFAULT 'manual',
   dev_notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),

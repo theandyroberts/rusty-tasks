@@ -10,6 +10,7 @@ type Task = {
   description?: string;
   status: 'todo' | 'in_progress' | 'needs_feedback' | 'done' | 'archive';
   priority?: 'low' | 'medium' | 'high';
+  assigned_to?: 'rusty' | 'claude_code' | 'unassigned';
   created_at: string;
   updated_at?: string;
   completed_at?: string;
@@ -56,6 +57,7 @@ export default function Home() {
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDesc, setNewTaskDesc] = useState('');
+  const [newTaskAssignee, setNewTaskAssignee] = useState<'rusty' | 'claude_code' | 'unassigned'>('rusty');
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
   const [scheduleDate, setScheduleDate] = useState<Date>(new Date());
@@ -243,6 +245,7 @@ export default function Home() {
         body: JSON.stringify({
           title: newTaskTitle,
           description: newTaskDesc,
+          assigned_to: newTaskAssignee,
           status: 'todo',
           source: 'manual',
         }),
@@ -250,6 +253,7 @@ export default function Home() {
       if (res.ok) {
         setNewTaskTitle('');
         setNewTaskDesc('');
+        setNewTaskAssignee('rusty');
         setShowAddTask(false);
         fetchData();
       }
@@ -388,7 +392,9 @@ export default function Home() {
   }
 
   // Check if Rusty is working on something
-  const isWorking = tasks.some(t => t.status === 'in_progress');
+  const isWorking = tasks.some(
+    (t) => t.status === 'in_progress' && (t.assigned_to === 'rusty' || t.assigned_to === 'unassigned' || !t.assigned_to)
+  );
 
   return (
     <div className="min-h-screen p-6">
@@ -539,6 +545,16 @@ export default function Home() {
                   className="w-full px-3 py-2 bg-slate-700 rounded mb-2 text-white resize-none"
                   rows={2}
                 />
+                <label className="block text-xs text-slate-400 mb-1">Assigned</label>
+                <select
+                  value={newTaskAssignee}
+                  onChange={(e) => setNewTaskAssignee(e.target.value as 'rusty' | 'claude_code' | 'unassigned')}
+                  className="w-full px-3 py-2 bg-slate-700 rounded mb-2 text-white"
+                >
+                  <option value="rusty">Rusty</option>
+                  <option value="claude_code">Claude Code</option>
+                  <option value="unassigned">Unassigned</option>
+                </select>
                 <div className="flex gap-2">
                   <button
                     onClick={addTask}
@@ -625,6 +641,11 @@ export default function Home() {
                                 {task.ref_num && <span className="text-slate-500 font-mono text-sm mr-2">#{task.ref_num}</span>}
                                 {task.title}
                               </p>
+                              {task.assigned_to && task.assigned_to !== 'unassigned' && (
+                                <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-300">
+                                  Assigned: {task.assigned_to === 'claude_code' ? 'Claude Code' : 'Rusty'}
+                                </span>
+                              )}
                               {task.description && (
                                 <p className="text-slate-400 text-sm mt-1">
                                   {task.description}

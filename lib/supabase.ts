@@ -9,8 +9,9 @@ export type Task = {
   id: string;
   title: string;
   description?: string;
-  status: 'todo' | 'in_progress' | 'done' | 'archive';
+  status: 'todo' | 'in_progress' | 'needs_feedback' | 'done' | 'archive';
   priority?: 'low' | 'medium' | 'high';
+  assigned_to?: 'rusty' | 'claude_code' | 'unassigned';
   created_at: string;
   updated_at: string;
   completed_at?: string;
