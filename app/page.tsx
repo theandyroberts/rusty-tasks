@@ -11,6 +11,8 @@ type Task = {
   status: 'todo' | 'in_progress' | 'needs_feedback' | 'done' | 'archive';
   priority?: 'low' | 'medium' | 'high';
   created_at: string;
+  updated_at?: string;
+  completed_at?: string;
   source?: string;
   dev_notes?: string;
 };
@@ -60,8 +62,9 @@ export default function Home() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [sendBackComment, setSendBackComment] = useState('');
   const [devNotes, setDevNotes] = useState('');
-  const [expandedArchiveIds, setExpandedArchiveIds] = useState<Set<string>>(new Set());
+  const [waybackExpanded, setWaybackExpanded] = useState(false);
   const [connected, setConnected] = useState(true);
+  const [avatarSrc, setAvatarSrc] = useState('/rusty-avatar.png');
 
   // Research topics
   const [topics, setTopics] = useState<ResearchTopic[]>([]);
@@ -352,10 +355,15 @@ export default function Home() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="bg-slate-800 p-8 rounded-xl shadow-xl">
           <div className="flex items-center gap-3 mb-6">
-            <img 
-              src="/rusty-avatar.png" 
-              alt="Rusty" 
+            <img
+              src={avatarSrc}
+              alt="Rusty"
               className="w-12 h-12 rounded-full object-cover"
+              onError={() => {
+                if (avatarSrc !== '/rusty-avatar-fallback.svg') {
+                  setAvatarSrc('/rusty-avatar-fallback.svg');
+                }
+              }}
             />
             <h1 className="text-2xl font-bold">Rusty</h1>
           </div>
@@ -426,10 +434,15 @@ export default function Home() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <div className={`relative ${isWorking ? 'avatar-working' : ''}`}>
-            <img 
-              src="/rusty-avatar.png" 
-              alt="Rusty" 
+            <img
+              src={avatarSrc}
+              alt="Rusty"
               className="w-16 h-16 rounded-full shadow-lg object-cover"
+              onError={() => {
+                if (avatarSrc !== '/rusty-avatar-fallback.svg') {
+                  setAvatarSrc('/rusty-avatar-fallback.svg');
+                }
+              }}
             />
           </div>
           <div>
@@ -553,54 +566,48 @@ export default function Home() {
 
           {/* Kanban Board */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {COLUMNS.map((column) => (
-              <div
-                key={column.id}
-                className="kanban-column p-4"
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDrop(e, column.id)}
-              >
-                <div className="flex items-center gap-2 mb-4">
-                  <span className={`status-dot status-${column.id}`}></span>
-                  <h2 className="font-semibold text-slate-300">{column.title}</h2>
-                  <span className="ml-auto text-slate-500 text-sm">
-                    {tasks.filter((t) => t.status === column.id).length}
-                  </span>
-                </div>
+            {COLUMNS.map((column) => {
+              const archiveCutoffMs = Date.now() - 7 * 24 * 60 * 60 * 1000;
+              const columnTasks = tasks.filter((task) => task.status === column.id);
+              const recentArchiveTasks = column.id === 'archive'
+                ? columnTasks.filter((task) => {
+                    const archiveDate = new Date(task.completed_at || task.updated_at || task.created_at).getTime();
+                    return Number.isFinite(archiveDate) && archiveDate >= archiveCutoffMs;
+                  })
+                : [];
+              const waybackTasks = column.id === 'archive'
+                ? columnTasks.filter((task) => {
+                    const archiveDate = new Date(task.completed_at || task.updated_at || task.created_at).getTime();
+                    return !Number.isFinite(archiveDate) || archiveDate < archiveCutoffMs;
+                  })
+                : [];
 
-                <div className="space-y-3">
-                  {tasks
-                    .filter((task) => task.status === column.id)
-                    .map((task) => {
+              return (
+                <div
+                  key={column.id}
+                  className="kanban-column p-4"
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, column.id)}
+                >
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className={`status-dot status-${column.id}`}></span>
+                    <h2 className="font-semibold text-slate-300">{column.title}</h2>
+                    <span className="ml-auto text-slate-500 text-sm">
+                      {column.id === 'archive' ? recentArchiveTasks.length : columnTasks.length}
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {(column.id === 'archive' ? recentArchiveTasks : columnTasks).map((task) => {
                       const isArchive = task.status === 'archive';
-                      const isExpanded = expandedArchiveIds.has(task.id);
-                      
-                      // Archive tasks: compact view unless expanded
-                      if (isArchive && !isExpanded) {
-                        return (
-                          <div
-                            key={task.id}
-                            className="task-card p-2 cursor-pointer hover:bg-slate-600/50"
-                            onClick={() => setExpandedArchiveIds(prev => new Set(prev).add(task.id))}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="status-dot status-archive"></span>
-                              <p className="text-sm text-slate-400 truncate">
-                                {task.ref_num && <span className="font-mono mr-1">#{task.ref_num}</span>}
-                                {task.title}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      }
-                      
+
                       return (
                         <div
                           key={task.id}
                           className={`task-card p-3 ${
-                            task.status === 'done' ? 'cursor-pointer hover:ring-2 hover:ring-green-500' : 
-                            task.status === 'needs_feedback' ? 'cursor-pointer hover:ring-2 hover:ring-purple-500' : 
-                            isArchive ? 'cursor-pointer' :
+                            task.status === 'done' ? 'cursor-pointer hover:ring-2 hover:ring-green-500' :
+                            task.status === 'needs_feedback' ? 'cursor-pointer hover:ring-2 hover:ring-purple-500' :
+                            isArchive ? '' :
                             'cursor-move'
                           }`}
                           draggable={task.status !== 'done' && task.status !== 'needs_feedback' && !isArchive}
@@ -608,12 +615,6 @@ export default function Home() {
                           onClick={() => {
                             if (task.status === 'done' || task.status === 'needs_feedback') {
                               setSelectedTask(task);
-                            } else if (isArchive) {
-                              setExpandedArchiveIds(prev => {
-                                const newSet = new Set(prev);
-                                newSet.delete(task.id);
-                                return newSet;
-                              });
                             }
                           }}
                         >
@@ -640,17 +641,40 @@ export default function Home() {
                                   <p className="text-slate-300 text-sm mt-1">{task.dev_notes}</p>
                                 </div>
                               )}
-                              {isArchive && (
-                                <p className="text-xs text-slate-500 mt-2 italic">Click to collapse</p>
-                              )}
                             </div>
                           </div>
                         </div>
                       );
                     })}
+
+                    {column.id === 'archive' && waybackTasks.length > 0 && (
+                      <div className="pt-2 border-t border-slate-700/80">
+                        <button
+                          onClick={() => setWaybackExpanded((prev) => !prev)}
+                          className="w-full text-left px-2 py-2 rounded bg-slate-800/70 hover:bg-slate-700/70 text-slate-300 text-sm flex items-center justify-between"
+                        >
+                          <span>WAYBACK</span>
+                          <span className="text-slate-400">{waybackExpanded ? '▾' : '▸'} {waybackTasks.length}</span>
+                        </button>
+
+                        {waybackExpanded && (
+                          <div className="space-y-2 mt-2">
+                            {waybackTasks.map((task) => (
+                              <div key={task.id} className="task-card p-2">
+                                <p className="text-sm text-slate-400 truncate">
+                                  {task.ref_num && <span className="font-mono mr-1">#{task.ref_num}</span>}
+                                  {task.title}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       ) : activeTab === 'today' ? (
